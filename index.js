@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const line = require('@line/bot-sdk');
 const express = require('express');
-const request = require('request');  // 新增 img-uploader-bot
+const gPlaceSearch = require('./gPlaceSearch');
 
 // create LINE SDK config from env variables
 const config = {
@@ -11,13 +11,10 @@ const config = {
   channelSecret: process.env['CHANNEL_SECRET'],
 };
 
-// 新增 img-uploader-bot
-const imgrConfig = {
-  imgurClientId: process.env['IMGUR_CLIENT_ID']
-}
-
 // create LINE SDK client
 const client = new line.Client(config);
+
+const gSearchMgr = new gPlaceSearch();
 
 // create Express app
 // about Express itself: https://expressjs.com/
@@ -30,69 +27,59 @@ app.post('/callback', line.middleware(config), (req, res) => {
     .all(req.body.events.map(handleEvent))
     .then((result) => res.json(result))
     .catch((err) => {
-      console.error(err);
+      console.error(`Event ${err}`);
       res.status(500).end();
     });
 });
 
-// 新增 img-uploader-bot
+// 新增 place-search-bot
 app.get('/', (req, res) => {
   res.json("ok");
 });
 
-/*
-// event handler
+// 新增 place-search-bot
+let conversation = {};
 function handleEvent(event) {
-  if (event.type !== 'message' || event.message.type !== 'text') {
-    // ignore non-text-message event
+  if (event.replyToken === "00000000000000000000000000000000" ||
+    event.replyToken === "ffffffffffffffffffffffffffffffff") {
     return Promise.resolve(null);
   }
-
-  // create a echoing text message
-  const echo = { type: 'text', text: event.message.text };
-
-  // use reply API
-  return client.replyMessage(event.replyToken, echo);
-}
-*/
-
-// 新增 img-uploader-bot
-function handleEvent(event) {
-  if (event.replyToken === "00000000000000000000000000000000" || event.replyToken === "ffffffffffffffffffffffffffffffff") {
-    return Promise.resolve(null);
+  if (event.type === 'message' && event.message.type === 'location') {
+    conversation[event.source.userId] = event.message;
+    const catReply = {
+      type: 'text',
+      text: '輸入要查詢的地點類型與半徑範例:\r\n300restaruant\r\ncafe100\r\natm 300\r\n'
+    };
+    return client.replyMessage(event.replyToken, catReply);
   }
-  if (event.type === 'message' && event.message.type === 'image') {
-    if (event.message.contentProvider.type === "line") {
-      client.getMessageContent(event.message.id)
-        .then((stream) => {
-          let data = [];
-          stream.on('data', (chunk) => {
-            data.push(chunk)
-          })
-          stream.on('end', () => {
-            const image = `${Buffer.concat(data).toString('base64')}`
-            const uploadImg = {
-              url: "https://api.imgur.com/3/image",
-              headers: {
-                'Authorization': `Client-ID ${imgrConfig.imgurClientId}`,
-              },
-              form: {
-                'image': image
-              }
-            };
-            request.post(uploadImg, (err, httpResponse, body) => {
-              if (httpResponse.statusCode === 200) {
-                const resBody = JSON.parse(body);
-                const picLink = { type: 'text', text: resBody.data.link };
-                return client.replyMessage(event.replyToken, picLink);
-              } else {
-                const uploadFail = { type: 'text', text: 'Send to Imgur Fail' };
-                return client.replyMessage(event.replyToken, uploadFail);
-              }
-            })
-          })
-        })
+  else if (event.type === 'message' &&
+    event.message.type === 'text' &&
+    conversation[event.source.userId] !== undefined) {
+    const lat = conversation[event.source.userId].latitude;
+    const lng = conversation[event.source.userId].longitude;
+    let radius = event.message.text.match(/\d/g);
+    if (radius === null) {
+      radius = 1500
+    } else {
+      radius = radius.join('');
+      radius = radius < 5 ? 100 : radius;
     }
+    let searchType = event.message.text.match(/[a-zA-z]+/g);
+    searchType = searchType === null ? 'restaruant' : searchType.join("").toLowerCase();
+    const searchParams = {
+      location: `${lat},${lng}`,
+      radius: radius,
+      type: searchType,
+      language: 'zh-TW'
+    }
+    delete conversation[event.source.userId];  //刪除使用者的地點暫存內容
+    gSearchMgr.SearchResultImageTmp(searchParams)  //搜尋地點並產生樣板訊息
+      .then((msgToUser) => {
+        return client.replyMessage(event.replyToken, msgToUser);
+      })      
+  } else {
+    const searchReply = { type: 'text', text: '傳送地址給我，我會幫你找附近的地點喔!' };
+    return client.replyMessage(event.replyToken, searchReply);
   }
   return Promise.resolve(null);
 }
