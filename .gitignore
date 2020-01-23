@@ -1,4 +1,6 @@
 node_modules
+snapshot
+
 .env
 ngrok.exe
 package-lock.json
