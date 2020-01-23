@@ -35,9 +35,7 @@ function handleEvent(event) {
     // ignore non-text-message event
     return Promise.resolve(null);
   }
-  if (event.replyToken==="00000000000000000000000000000000" || event.replyToken==="ffffffffffffffffffffffffffffffff") {
-    return Promise.resolve(null);
-  }
+  
   // create a echoing text message
   const echo = { type: 'text', text: event.message.text };
 
