@@ -78,8 +78,22 @@ function handleEvent(event) {
         return client.replyMessage(event.replyToken, msgToUser);
       })      
   } else {
-    const searchReply = { type: 'text', text: '傳送地址給我，我會幫你找附近的地點喔!' };
-    return client.replyMessage(event.replyToken, searchReply);
+    const msgToUser = {
+      type: 'text',
+      text: '傳送地址給我，我會幫你找附近的地點喔!',
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'location',
+              label: '開啟地圖'
+            }
+          }
+        ]
+      }
+    }
+    return client.replyMessage(event.replyToken, msgToUser);
   }
   return Promise.resolve(null);
 }
