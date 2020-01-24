@@ -1,0 +1,14 @@
+.area {
+  background-color: #f5f8fa;
+  border: 1px solid #edeeee;
+  border-radius: 6px;
+  margin: 10px 0;
+  padding: 30px 0;
+  word-break: break-all;
+}
+
+.profile-img {
+  width: 100px;
+  height: 100px;
+  max-width: 100%;
+}
