@@ -3,7 +3,10 @@ require('dotenv').config();
 
 const line = require('@line/bot-sdk');
 const express = require('express');
-const request = require('request');  // 新增 img-uploader-bot
+
+// 新增 img-uploader-bot v1
+const querystring = require('querystring');
+const imgur = require('./imgur');
 
 // create LINE SDK config from env variables
 const config = {
@@ -11,17 +14,14 @@ const config = {
   channelSecret: process.env['CHANNEL_SECRET'],
 };
 
-// 新增 img-uploader-bot
-const imgrConfig = {
-  imgurClientId: process.env['IMGUR_CLIENT_ID']
-}
-
 // create LINE SDK client
 const client = new line.Client(config);
 
 // create Express app
 // about Express itself: https://expressjs.com/
 const app = express();
+
+const imgurMgr = new imgur(); // 新增 img-uploader-bot v1
 
 // register a webhook handler with middleware
 // about the middleware, please refer to doc
@@ -69,29 +69,26 @@ function handleEvent(event) {
           stream.on('data', (chunk) => {
             data.push(chunk)
           })
-          stream.on('end', () => {
-            const image = `${Buffer.concat(data).toString('base64')}`
-            const uploadImg = {
-              url: "https://api.imgur.com/3/image",
-              headers: {
-                'Authorization': `Client-ID ${imgrConfig.imgurClientId}`,
-              },
-              form: {
-                'image': image
-              }
-            };
-            request.post(uploadImg, (err, httpResponse, body) => {
-              if (httpResponse.statusCode === 200) {
-                const resBody = JSON.parse(body);
-                const picLink = { type: 'text', text: resBody.data.link };
-                return client.replyMessage(event.replyToken, picLink);
-              } else {
-                const uploadFail = { type: 'text', text: 'Send to Imgur Fail' };
-                return client.replyMessage(event.replyToken, uploadFail);
-              }
-            })
-          })
+      stream.on('end', () => {
+        const image = `${Buffer.concat(data).toString('base64')}`
+        imgurMgr.uploadImg(image)  //透過imgurMgr的自訂方法上傳圖片
+          .then((body) => {  //取得上傳的結果
+            const resBody = JSON.parse(body);  //取出將上傳結果資料轉為JSON
+            const templateMsg = imgurMgr.ShareAndDeleteTmp(event.source.userId, resBody); //產生樣板訊息
+            return client.replyMessage(event.replyToken, templateMsg); //發送樣板訊息給使用者
+          });
         })
+      })
+    }
+  } else if (event.type === 'postback') {
+    const data = querystring.parse(event.postback.data); //抓取查詢的參數
+    switch (data.action) {
+      case 'img-delete': //刪除照片
+        imgurMgr.deleteImg(data.hash) //
+          .then(() => {
+            return client.replyMessage(event.replyToken, { type: 'text', text: 'Deleted' });
+          })
+        break;
     }
   }
   return Promise.resolve(null);
