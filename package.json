@@ -1,22 +1,16 @@
 {
-  "name": "echo-bot",
+  "name": "line-bot-ai-v0",
   "version": "0.0.0",
-  "description": "An example LINE bot just to echo messages",
-  "main": "index.js",
+  "description": "A node-nlp example.",
+  "main": "nlp.js",
   "scripts": {
     "start": "node ."
   },
   "dependencies": {
     "@line/bot-sdk": "^6.8.4",
-    "bluebird": "^3.7.2",
     "dotenv": "^8.2.0",
-    "eslint": "^6.8.0",
-    "eslint-config-airbnb-base": "^14.0.0",
-    "eslint-plugin-import": "^2.20.0",
-    "express": "^4.16.3",
-    "express-session": "^1.17.0",
-    "jsonwebtoken": "^8.5.1",
-    "pug": "^2.0.4",
+    "express": "^4.17.1",
+    "node-nlp": "^3.10.2",
     "request": "^2.88.0"
   }
 }
