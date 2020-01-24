@@ -90,6 +90,30 @@ function handleEvent(event) {
           })
         break;
     }
+  } else if (event.type === 'message' && event.message.type === 'text') {
+    const msgToUser = {
+      type: 'text',
+      text: '傳送相片給我，我會幫你上傳至Imgur網站喔!!',
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'camera',
+              label: '開啟相機'
+            }
+          },
+          {
+            type: 'action',
+            action: {
+              type: 'cameraRoll',
+              label: '開啟相簿'
+            }
+          }
+        ]
+      }
+    }
+    return client.replyMessage(event.replyToken, msgToUser);
   }
   return Promise.resolve(null);
 }
